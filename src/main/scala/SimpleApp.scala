@@ -8,6 +8,7 @@ import akka.cluster.Cluster
 import akka.actor.Terminated
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.client.{HBaseAdmin, HConnectionManager}
+//import org.apache.spark.{SparkConf, SparkContext}
 
 object SimpleApp {
   def main(args: Array[String]) {
@@ -31,7 +32,9 @@ object SimpleApp {
 
   class HelloWorld extends Actor with ActorLogging {
     def receive = {
-      case _ => log.info("Hello world")
+      case _ => {
+        log.info("Hello world")
+      }
     }
   }
 
