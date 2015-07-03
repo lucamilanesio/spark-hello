@@ -53,7 +53,10 @@ object ApplicationMaster extends App {
     import scala.collection.JavaConversions._
     for (container <- response.getAllocatedContainers) {
       val ctx: ContainerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
-      ctx.setCommands(Collections.singletonList(command + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"))
+      val ourJar = getOurJarsFromClasspath
+      println(s"Our JAR in classpath is: $ourJar")
+      val cmdLine = s"$$JAVA_HOME/bin/java -cp $ourJar SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+      ctx.setCommands(Seq(cmdLine))
       System.out.println("Launching container " + container.getId)
       nmClient.startContainer(container, ctx)
     }
@@ -65,6 +68,11 @@ object ApplicationMaster extends App {
     Thread.sleep(100)
   }
   rmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "", "")
+
+  def getOurJarsFromClasspath = {
+    val fullClassPath = System.getProperty("java.class.path").split(":")
+    (fullClassPath.filter(_.contains("simpleapp.jar")) ++ fullClassPath.filterNot(_.contains("simpleapp.jar"))).mkString(":")
+  }
 }
 
 
