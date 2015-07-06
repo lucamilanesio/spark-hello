@@ -1,23 +1,28 @@
-import java.util.Collections
+import java.util.{HashMap, Map, Collections}
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.Path
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse
-import org.apache.hadoop.yarn.api.records.{ContainerLaunchContext, FinalApplicationStatus, Priority, Resource}
+import org.apache.hadoop.yarn.api.records._
 import org.apache.hadoop.yarn.client.api.{AMRMClient, NMClient}
 import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.Records
+import AppContainerSetup._
 
 object ApplicationMaster extends App {
+  implicit val conf: Configuration = new YarnConfiguration
+  val LOG = new Log(this.getClass, conf)
 
   val command: String = args(0)
   val n: Int = Integer.valueOf(args(1))
-  val conf: Configuration = new YarnConfiguration
+  val jarPath: Path = new Path(args(2))
 
-  println(s"ClassPath: ${System.getProperty("java.class.path")}")
+
+  LOG.info(s"ClassPath: ${System.getProperty("java.class.path")}")
   val hadoopToken = System.getenv("HADOOP_TOKEN_FILE_LOCATION")
-  println(s"HADOOP_TOKEN_FILE_LOCATION=${hadoopToken}")
+  LOG.info(s"HADOOP_TOKEN_FILE_LOCATION=${hadoopToken}")
 
   val rmClient: AMRMClient[AMRMClient.ContainerRequest] = AMRMClient.createAMRMClient.asInstanceOf[AMRMClient[AMRMClient.ContainerRequest]]
   rmClient.init(conf)
@@ -25,9 +30,9 @@ object ApplicationMaster extends App {
   val nmClient: NMClient = NMClient.createNMClient
   nmClient.init(conf)
   nmClient.start
-  System.out.println("registerApplicationMaster 0")
+  LOG.info("registerApplicationMaster 0")
   rmClient.registerApplicationMaster("", 0, "")
-  System.out.println("registerApplicationMaster 1")
+  LOG.info("registerApplicationMaster 1")
   val priority: Priority = Records.newRecord(classOf[Priority])
   priority.setPriority(0)
   val capability: Resource = Records.newRecord(classOf[Resource])
@@ -38,7 +43,7 @@ object ApplicationMaster extends App {
   while (i < n) {
     {
       val containerAsk: AMRMClient.ContainerRequest = new AMRMClient.ContainerRequest(capability, null, null, priority)
-      System.out.println("Making res-req " + i)
+      LOG.info("Making res-req " + i)
       rmClient.addContainerRequest(containerAsk)
     }
     ({
@@ -57,26 +62,28 @@ object ApplicationMaster extends App {
     import scala.collection.JavaConversions._
     for (container <- response.getAllocatedContainers) {
       val ctx: ContainerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
-      val ourJar = getOurJarsFromClasspath
-      println(s"Our JAR in classpath is: $ourJar")
-      val cmdLine = s"$$JAVA_HOME/bin/java -cp $ourJar SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+      val appMasterJar: LocalResource = Records.newRecord(classOf[LocalResource])
+      setupContainerJar(jarPath, appMasterJar)
+      ctx.setLocalResources(Collections.singletonMap("simpleapp.jar", appMasterJar))
+      val appMasterEnv: Map[String, String] = new HashMap[String, String]
+      setupContainerEnv(appMasterEnv)
+      ctx.setEnvironment(appMasterEnv)
+
+//      val cmdLine = s"$$JAVA_HOME/bin/java SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+      val cmdLine = s"$$JAVA_HOME/bin/java -fullversion 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+      LOG.info(s"executing $cmdLine")
       ctx.setCommands(Seq(cmdLine))
-      System.out.println("Launching container " + container.getId)
+
+      LOG.info("Launching container " + container.getId)
       nmClient.startContainer(container, ctx)
     }
     import scala.collection.JavaConversions._
     for (status <- response.getCompletedContainersStatuses) {
       completedContainers += 1
-      System.out.println("Completed container " + status.getContainerId)
+      LOG.info("Completed container " + status.getContainerId)
     }
-    Thread.sleep(100)
   }
   rmClient.unregisterApplicationMaster(FinalApplicationStatus.SUCCEEDED, "", "")
-
-  def getOurJarsFromClasspath = {
-    val fullClassPath = System.getProperty("java.class.path").split(":")
-    (fullClassPath.filter(_.contains("simpleapp.jar")) ++ fullClassPath.filterNot(_.contains("simpleapp.jar"))).mkString(":")
-  }
 }
 
 

@@ -27,7 +27,7 @@ import org.apache.hadoop.yarn.util.Apps
 import org.apache.hadoop.yarn.util.ConverterUtils
 import org.apache.hadoop.yarn.util.Records
 import scala.collection.JavaConversions._
-
+import AppContainerSetup._
 
 object Client extends App {
     val c: Client = new Client
@@ -35,7 +35,7 @@ object Client extends App {
 }
 
 class Client {
-  val conf: Configuration = new YarnConfiguration
+  implicit val conf: Configuration = new YarnConfiguration
 
   @throws(classOf[Exception])
   def run(args: Array[String]) {
@@ -66,12 +66,12 @@ class Client {
       amContainer.setTokens(fsToken)
     }
 
-    amContainer.setCommands(Collections.singletonList("$JAVA_HOME/bin/java" + " -Xmx256M" + " ApplicationMaster" + " " + command + " " + String.valueOf(n) + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"))
+    amContainer.setCommands(Collections.singletonList("$JAVA_HOME/bin/java" + " -Xmx256M" + " ApplicationMaster" + " " + command + " " + String.valueOf(n) + " " + jarPath + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"))
     val appMasterJar: LocalResource = Records.newRecord(classOf[LocalResource])
-    setupAppMasterJar(jarPath, appMasterJar)
+    setupContainerJar(jarPath, appMasterJar)(conf)
     amContainer.setLocalResources(Collections.singletonMap("simpleapp.jar", appMasterJar))
     val appMasterEnv: Map[String, String] = new HashMap[String, String]
-    setupAppMasterEnv(appMasterEnv)
+    setupContainerEnv(appMasterEnv)(conf)
     amContainer.setEnvironment(appMasterEnv)
     val capability: Resource = Records.newRecord(classOf[Resource])
     capability.setMemory(256)
@@ -94,21 +94,6 @@ class Client {
     println("Application " + appId + " finished with" + " state " + appState + " at " + appReport.getFinishTime)
   }
 
-  @throws(classOf[IOException])
-  private def setupAppMasterJar(jarPath: Path, appMasterJar: LocalResource) {
-    val jarStat: FileStatus = FileSystem.get(conf).getFileStatus(jarPath)
-    appMasterJar.setResource(ConverterUtils.getYarnUrlFromPath(jarPath))
-    appMasterJar.setSize(jarStat.getLen)
-    appMasterJar.setTimestamp(jarStat.getModificationTime)
-    appMasterJar.setType(LocalResourceType.FILE)
-    appMasterJar.setVisibility(LocalResourceVisibility.PUBLIC)
-  }
 
-  private def setupAppMasterEnv(appMasterEnv: Map[String, String]) {
-    for (c <- conf.getStrings(YarnConfiguration.YARN_APPLICATION_CLASSPATH, YarnConfiguration.DEFAULT_YARN_APPLICATION_CLASSPATH:_*)) {
-      Apps.addToEnvironment(appMasterEnv, Environment.CLASSPATH.name, c.trim)
-    }
-    Apps.addToEnvironment(appMasterEnv, Environment.CLASSPATH.name, Environment.PWD.$ + File.separator + "*")
-  }
 }
 

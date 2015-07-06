@@ -11,16 +11,18 @@ import org.apache.hadoop.hbase.client.{HBaseAdmin, HConnectionManager}
 //import org.apache.spark.{SparkConf, SparkContext}
 
 object SimpleApp {
-  def main(args: Array[String]) {
-//    println("Creating a new SparkContext ...")
-//    val sc = new SparkContext(new SparkConf().setAppName("Simple Application"))
-//    println(s"Created: $sc")
+  val conf = HBaseConfiguration.create()
 
-    println("Connecting to HBase ...")
-    val conf = HBaseConfiguration.create()
+  val LOG = new Log(this.getClass, conf)
+  def main(args: Array[String]) {
+//    LOG.info("Creating a new SparkContext ...")
+//    val sc = new SparkContext(new SparkConf().setAppName("Simple Application"))
+//    LOG.info(s"Created: $sc")
+
+    LOG.info("Connecting to HBase ...")
     val conn = HConnectionManager.createConnection(conf)
     val admin = new HBaseAdmin(conf)
-    println(s"Connected: conn=$conn admin=$admin")
+    LOG.info(s"Connected: conn=$conn admin=$admin")
 
     val system = ActorSystem("Hello")
     val cluster = Cluster.get(system)
