@@ -1,5 +1,6 @@
 JAR=simple-project-shaded.jar
-CLIENT_CLASS=Client
-hadoop fs -rm /user/root/$JAR
-hadoop fs -copyFromLocal $JAR /user/root/.
-hadoop jar $JAR $CLIENT_CLASS /bin/date 1 hdfs://localhost:8020/user/root/$JAR
+CLIENT_CLASS=Clientgit
+NAME_NODE=nameservice1
+hadoop fs -rm /user/$USER/$JAR
+hadoop fs -copyFromLocal target/scala-2.10/$JAR /user/$USER/.
+hadoop jar target/scala-2.10/$JAR $CLIENT_CLASS /bin/date 1 hdfs://$NAME_NODE/user/$USER/$JAR
