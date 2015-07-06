@@ -1,6 +1,7 @@
 import java.util.Collections
 
 import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse
 import org.apache.hadoop.yarn.api.records.{ContainerLaunchContext, FinalApplicationStatus, Priority, Resource}
@@ -10,11 +11,14 @@ import org.apache.hadoop.yarn.util.Records
 
 object ApplicationMaster extends App {
 
-  println(s"ClassPath: ${System.getProperty("java.class.path")}")
-
   val command: String = args(0)
   val n: Int = Integer.valueOf(args(1))
   val conf: Configuration = new YarnConfiguration
+
+  println(s"ClassPath: ${System.getProperty("java.class.path")}")
+  val hadoopToken = System.getenv("HADOOP_TOKEN_FILE_LOCATION")
+  println(s"HADOOP_TOKEN_FILE_LOCATION=${hadoopToken}")
+
   val rmClient: AMRMClient[AMRMClient.ContainerRequest] = AMRMClient.createAMRMClient.asInstanceOf[AMRMClient[AMRMClient.ContainerRequest]]
   rmClient.init(conf)
   rmClient.start

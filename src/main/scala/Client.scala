@@ -1,5 +1,5 @@
-import java.io.File
-import java.io.IOException
+import java.io.{DataOutput, File, IOException}
+import java.nio.ByteBuffer
 import java.util.Collections
 import java.util.HashMap
 import java.util.Map
@@ -7,6 +7,8 @@ import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.FileStatus
 import org.apache.hadoop.fs.FileSystem
 import org.apache.hadoop.fs.Path
+import org.apache.hadoop.io.DataOutputBuffer
+import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.ApplicationConstants.Environment
 import org.apache.hadoop.yarn.api.records.ApplicationId
@@ -24,6 +26,7 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration
 import org.apache.hadoop.yarn.util.Apps
 import org.apache.hadoop.yarn.util.ConverterUtils
 import org.apache.hadoop.yarn.util.Records
+import scala.collection.JavaConversions._
 
 
 object Client extends App {
@@ -41,10 +44,28 @@ class Client {
     val jarPath: Path = new Path(args(2))
     val conf: YarnConfiguration = new YarnConfiguration
     val yarnClient: YarnClient = YarnClient.createYarnClient
+
+    val fs = FileSystem.get(conf)
     yarnClient.init(conf)
     yarnClient.start
     val app: YarnClientApplication = yarnClient.createApplication
     val amContainer: ContainerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
+
+    if(UserGroupInformation.isSecurityEnabled()) {
+      println("Security is enabled")
+      val credentials = new Credentials()
+      val tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL)
+      require(tokenRenewer != null)
+      val tokens = fs.addDelegationTokens(tokenRenewer, credentials)
+      require(tokens != null)
+
+      println(s"${fs.getUri} has delegation tokens: ${tokens.mkString(",")}")
+      val dob = new DataOutputBuffer()
+      credentials.writeTokenStorageToStream(dob)
+      val fsToken = ByteBuffer.wrap(dob.getData, 0, dob.getLength)
+      amContainer.setTokens(fsToken)
+    }
+
     amContainer.setCommands(Collections.singletonList("$JAVA_HOME/bin/java" + " -Xmx256M" + " ApplicationMaster" + " " + command + " " + String.valueOf(n) + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"))
     val appMasterJar: LocalResource = Records.newRecord(classOf[LocalResource])
     setupAppMasterJar(jarPath, appMasterJar)
