@@ -51,20 +51,7 @@ class Client {
     val app: YarnClientApplication = yarnClient.createApplication
     val amContainer: ContainerLaunchContext = Records.newRecord(classOf[ContainerLaunchContext])
 
-    if(UserGroupInformation.isSecurityEnabled()) {
-      println("Security is enabled")
-      val credentials = new Credentials()
-      val tokenRenewer = conf.get(YarnConfiguration.RM_PRINCIPAL)
-      require(tokenRenewer != null)
-      val tokens = fs.addDelegationTokens(tokenRenewer, credentials)
-      require(tokens != null)
-
-      println(s"${fs.getUri} has delegation tokens: ${tokens.mkString(",")}")
-      val dob = new DataOutputBuffer()
-      credentials.writeTokenStorageToStream(dob)
-      val fsToken = ByteBuffer.wrap(dob.getData, 0, dob.getLength)
-      amContainer.setTokens(fsToken)
-    }
+    setupDelegationToken(conf, fs).foreach(amContainer.setTokens)
 
     amContainer.setCommands(Collections.singletonList("$JAVA_HOME/bin/java" + " -Xmx256M" + " ApplicationMaster" + " " + command + " " + String.valueOf(n) + " " + jarPath + " 1>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stdout" + " 2>" + ApplicationConstants.LOG_DIR_EXPANSION_VAR + "/stderr"))
     val appMasterJar: LocalResource = Records.newRecord(classOf[LocalResource])

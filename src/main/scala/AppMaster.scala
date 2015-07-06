@@ -1,7 +1,7 @@
 import java.util.{HashMap, Map, Collections}
 
 import org.apache.hadoop.conf.Configuration
-import org.apache.hadoop.fs.Path
+import org.apache.hadoop.fs.{FileSystem, Path}
 import org.apache.hadoop.security.{Credentials, UserGroupInformation}
 import org.apache.hadoop.yarn.api.ApplicationConstants
 import org.apache.hadoop.yarn.api.protocolrecords.AllocateResponse
@@ -68,9 +68,10 @@ object ApplicationMaster extends App {
       val appMasterEnv: Map[String, String] = new HashMap[String, String]
       setupContainerEnv(appMasterEnv)
       ctx.setEnvironment(appMasterEnv)
+      implicit val fs = FileSystem.get(conf)
+      setupDelegationToken(conf, fs).foreach(ctx.setTokens)
 
-//      val cmdLine = s"$$JAVA_HOME/bin/java SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
-      val cmdLine = s"$$JAVA_HOME/bin/java -fullversion 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+      val cmdLine = s"$$JAVA_HOME/bin/java SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
       LOG.info(s"executing $cmdLine")
       ctx.setCommands(Seq(cmdLine))
 
