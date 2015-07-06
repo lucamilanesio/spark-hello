@@ -16,3 +16,9 @@ yarn logs -applicationId <application ID>
 From the Yarn UI, browse:
 http://<yarn node manager host>:8088/
 
+
+## How to kill the job
+
+```
+yarn application -kill <application ID>
+```
