@@ -6,8 +6,11 @@ import akka.actor.Actor
 import akka.actor.ActorLogging
 import akka.cluster.Cluster
 import akka.actor.Terminated
+import com.typesafe.config.ConfigFactory
 import org.apache.hadoop.hbase.HBaseConfiguration
 import org.apache.hadoop.hbase.client.{HBaseAdmin, HConnectionManager}
+import org.apache.spark.{SparkConf, SparkContext}
+
 //import org.apache.spark.{SparkConf, SparkContext}
 
 object SimpleApp {
@@ -19,12 +22,12 @@ object SimpleApp {
 //    val sc = new SparkContext(new SparkConf().setAppName("Simple Application"))
 //    LOG.info(s"Created: $sc")
 
-    LOG.info("Connecting to HBase ...")
-    val conn = HConnectionManager.createConnection(conf)
-    val admin = new HBaseAdmin(conf)
-    LOG.info(s"Connected: conn=$conn admin=$admin")
+//    LOG.info("Connecting to HBase ...")
+//    val conn = HConnectionManager.createConnection(conf)
+//    val admin = new HBaseAdmin(conf)
+//    LOG.info(s"Connected: conn=$conn admin=$admin")
 
-    val system = ActorSystem("Hello")
+    val system = ActorSystem("Hello", ConfigFactory.load("simple-app"))
     val cluster = Cluster.get(system)
     val a = system.actorOf(Props[HelloWorld], "helloWorld")
     system.actorOf(Props(classOf[Terminator], a), "terminator")

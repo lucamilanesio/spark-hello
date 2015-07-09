@@ -51,7 +51,7 @@ object AppContainerSetup {
 class Log(val logger: Class[_], conf: Configuration) {
   def open = {
     val fs = FileSystem.get(conf)
-    val fileName = logger.getSimpleName + "_" + System.currentTimeMillis
+    val fileName = "/user/root/" + logger.getSimpleName + "_" + System.currentTimeMillis
     new PrintWriter(fs.create(new Path(fileName)))
   }
 

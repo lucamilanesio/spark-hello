@@ -22,3 +22,17 @@ http://<yarn node manager host>:8088/
 ```
 yarn application -kill <application ID>
 ```
+
+## How to execute through spark-submit 
+
+To execute the local driver:
+
+```
+spark-submit --master yarn-client --class SimpleApp --verbose --conf spark.driver.userClassPathFirst=true ./simple-project-shaded.jar
+```
+
+To execute the driver through YARN
+
+```
+spark-submit --master yarn-client --class SimpleApp --verbose --conf spark.driver.userClassPathFirst=true ./simple-project-shaded.jar
+```

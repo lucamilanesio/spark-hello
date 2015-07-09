@@ -72,6 +72,7 @@ object ApplicationMaster extends App {
       setupDelegationToken(conf, fs).foreach(ctx.setTokens)
 
       val cmdLine = s"$$JAVA_HOME/bin/java SimpleApp 1> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stdout 2> ${ApplicationConstants.LOG_DIR_EXPANSION_VAR}/stderr"
+
       LOG.info(s"executing $cmdLine")
       ctx.setCommands(Seq(cmdLine))
 
