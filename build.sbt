@@ -31,6 +31,7 @@ libraryDependencies ++= Seq(
   "org.apache.hadoop" % "hadoop-yarn-client" % "2.2.0" % "provided")
   .map(
     _ exclude("log4j", "log4j")
+
 //      exclude("com.typesafe.akka", "akka-actor_2.10")
 //      exclude("com.typesafe.akka", "akka-remote_2.10")
 //      exclude("io.netty", "netty-all")
