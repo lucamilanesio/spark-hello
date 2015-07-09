@@ -9,8 +9,9 @@ import akka.actor.ActorLogging
 import akka.cluster.Cluster
 import akka.actor.Terminated
 import com.typesafe.config.ConfigFactory
-import org.apache.hadoop.hbase.HBaseConfiguration
-import org.apache.hadoop.hbase.client.{HBaseAdmin, HConnectionManager}
+import org.apache.hadoop.hbase.util.Bytes
+import org.apache.hadoop.hbase._
+import org.apache.hadoop.hbase.client._
 import org.apache.spark.{SparkConf, SparkContext}
 import scala.collection.JavaConversions._
 
@@ -23,10 +24,27 @@ object SimpleApp {
   def main(args: Array[String]) {
 
 
-//    LOG.info("Connecting to HBase ...")
-//    val conn = HConnectionManager.createConnection(conf)
-//    val admin = new HBaseAdmin(conf)
-//    LOG.info(s"Connected: conn=$conn admin=$admin")
+    LOG.info("Connecting to HBase ...")
+    val conn = ConnectionFactory.createConnection()
+    LOG.info(s"HBase connected: $conn")
+
+    val tableName = TableName.valueOf("kvstore")
+    val tableExists = conn.getAdmin.tableExists(tableName)
+    if(!tableExists)
+    {
+      val tableDesc = new HTableDescriptor(tableName)
+      tableDesc.addFamily(new HColumnDescriptor(Bytes.toBytes("myFamily")))
+      conn.getAdmin.createTable(tableDesc)
+    }
+
+    val table = conn.getTable(tableName)
+    LOG.info(s"HBase table: $table")
+    val myKey = "myKey"
+    table.put(new Put(Bytes.toBytes(myKey)).addColumn(Bytes.toBytes("myFamily"), Bytes.toBytes(""), Bytes.toBytes("something")))
+    LOG.info(s"HBase put ${myKey} to table SUCCEEDED")
+
+    val result = table.get(new Get(Bytes.toBytes(myKey)))
+    LOG.info(s"HBase get ${myKey} found? ${!result.isEmpty}")
 
     val system = ActorSystem("Hello", ConfigFactory.load("simple-app"))
     val cluster = Cluster.get(system)
@@ -38,11 +56,9 @@ object SimpleApp {
     val currentClassPath: Seq[URL] = System.getProperty("java.class.path").split(":")
       .filterNot(_.isEmpty)
       .map((x: String) => new URI("file://" + x).toURL)
-
-    LOG.info(currentClassPath.map(_.toString).mkString("\n"))
+    LOG.info(s"Java ClassPath: ${currentClassPath.map(_.toString).mkString("\n")}")
 
     val currentClassPathArray: Array[URL] = currentClassPath.toArray
-
     val origClassLoader = new URLClassLoader(currentClassPathArray, null)
 
 
@@ -53,7 +69,6 @@ object SimpleApp {
     Thread.currentThread().setContextClassLoader(origClassLoader)
 
     LOG.info("Creating a new SparkContext ...")
-//    val sc = new SparkContext(new SparkConf().setAppName("Simple Application"))
     val sparkContextClass = origClassLoader.loadClass("org.apache.spark.SparkContext")
     val sparkConfClass = origClassLoader.loadClass("org.apache.spark.SparkConf")
     val sparkConf: Object = sparkConfClass.newInstance().asInstanceOf[Object]
@@ -63,7 +78,7 @@ object SimpleApp {
 
     val sparkContextConstructor = sparkContextClass.getConstructor(sparkConfClass)
     val sc = sparkContextConstructor.newInstance(sparkConf)
-    LOG.info(s"Created: $sc")
+    LOG.info(s"SparkContext created: $sc")
   }
 
   class HelloWorld extends Actor with ActorLogging {
