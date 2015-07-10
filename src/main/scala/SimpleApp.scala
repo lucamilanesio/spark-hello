@@ -69,6 +69,12 @@ object SimpleApp {
 
     Thread.currentThread().setContextClassLoader(origClassLoader)
 
+    LOG.info("Creating a new YarnConf ...")
+    val yarnConfClass = origClassLoader.loadClass("org.apache.hadoop.yarn.conf.YarnConfiguration")
+    val yarnConf = yarnConfClass.newInstance()
+    val yarnConfToStringMethod = yarnConfClass.getMethod("toString")
+    LOG.info(s"YarnConfiguration: ${yarnConfToStringMethod.invoke(yarnConf)}")
+
     LOG.info("Creating a new SparkConf ...")
     val sparkConfClass = origClassLoader.loadClass("org.apache.spark.SparkConf")
     val sparkConf: Object = sparkConfClass.newInstance().asInstanceOf[Object]
