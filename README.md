@@ -42,5 +42,5 @@ spark-submit --master yarn-client --class SimpleApp --verbose --conf spark.drive
 HBase configuration is automatically taken from the Java classpath: just add /etc/hbase/conf as driver-class-path on Spark
 
 ```
-spark-submit --master yarn-client --class SimpleApp --driver-class-path "/etc/hbase/conf" --verbose --conf spark.driver.userClassPathFirst=true ./simple-project-shaded.jar
+spark-submit --master yarn-client --class SimpleApp --driver-class-path "/etc/hbase/conf" --verbose --conf spark.driver.userClassPathFirst=true target/scala-2.10/simple-project-shaded.jar
 ```
