@@ -55,8 +55,9 @@ object SimpleApp {
 
     val currentClassPath: Seq[URL] = System.getProperty("java.class.path").split(":")
       .filterNot(_.isEmpty)
+      .filterNot(_.contains("hadoop-yarn/cache"))
       .map((x: String) => new URI("file://" + x).toURL)
-    LOG.info(s"Java ClassPath: ${currentClassPath.map(_.toString).mkString("\n")}")
+    LOG.info(s"Filtered Java ClassPath: ${currentClassPath.map(_.toString).mkString("\n")}")
 
     val currentClassPathArray: Array[URL] = currentClassPath.toArray
     val origClassLoader = new URLClassLoader(currentClassPathArray, null)
@@ -68,14 +69,19 @@ object SimpleApp {
 
     Thread.currentThread().setContextClassLoader(origClassLoader)
 
-    LOG.info("Creating a new SparkContext ...")
-    val sparkContextClass = origClassLoader.loadClass("org.apache.spark.SparkContext")
+    LOG.info("Creating a new SparkConf ...")
     val sparkConfClass = origClassLoader.loadClass("org.apache.spark.SparkConf")
     val sparkConf: Object = sparkConfClass.newInstance().asInstanceOf[Object]
+
+    val toDebugStringMethod = sparkConfClass.getMethod("toDebugString");
+    LOG.info(s"SparkConfig: ${toDebugStringMethod.invoke(sparkConf).toString}")
+
+    LOG.info("Setting application name ...")
     val setAppNameMethod = sparkConfClass.getMethod("setAppName", classOf[java.lang.String])
     setAppNameMethod.invoke(sparkConf, new java.lang.String("Simple Application"))
-    LOG.info(s"Created sparkConf: $sparkConf")
 
+    LOG.info("Creating SparkContext ...")
+    val sparkContextClass = origClassLoader.loadClass("org.apache.spark.SparkContext")
     val sparkContextConstructor = sparkContextClass.getConstructor(sparkConfClass)
     val sc = sparkContextConstructor.newInstance(sparkConf)
     LOG.info(s"SparkContext created: $sc")
